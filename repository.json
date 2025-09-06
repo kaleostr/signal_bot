@@ -1,0 +1,10 @@
+{
+  "name": "Vyacheslav HA Add-ons",
+  "url": "https://github.com/your-username/ha-binance-spot-addons",
+  "maintainer": "Vyacheslav",
+  "arch": [
+    "aarch64",
+    "armv7",
+    "amd64"
+  ]
+}
