@@ -1,6 +1,6 @@
 {
   "name": "Vyacheslav HA Add-ons",
-  "url": "https://github.com/your-username/ha-binance-spot-addons",
+  "url": "https://github.com/kaleostr/ha-binance-spot-addons",
   "maintainer": "Vyacheslav",
   "arch": [
     "aarch64",
