@@ -29,6 +29,15 @@ input,select{width:100%;background:#0c0f14;border:1px solid var(--line);border-r
 .notice{color:var(--muted);font-size:12px;margin-top:6px}
 footer{color:var(--muted);font-size:12px;margin:8px 2px}
 hr.sep{border:0;border-top:1px solid var(--line);margin:12px 0}
+
+.tip{position:relative;cursor:help}
+.tip::after{content:attr(data-tip);position:absolute;left:0;top:110%;min-width:220px;max-width:420px;
+  background:#0b0e14;border:1px solid var(--line);padding:10px 12px;border-radius:10px;color:#d7deea;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:0;pointer-events:none;transform:translateY(-2px);
+  transition:opacity .12s ease, transform .12s ease;white-space:pre-line;z-index:10}
+.tip:hover::after{opacity:1;transform:translateY(0)}
+.tip::before{content:"";position:absolute;left:12px;top:100%;border:6px solid transparent;border-top-color:var(--line);opacity:0;transition:opacity .12s ease}
+.tip:hover::before{opacity:1}
 </style>
 </head>
 <body>
@@ -37,10 +46,10 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:12px 0}
   <div class="status" id="status">Status: —</div>
 
   <div class="controls">
-    <button class="btn primary" onclick="save()">Save & Apply</button>
-    <button class="btn" onclick="ping()">Ping</button>
-    <button class="btn ghost" onclick="load()">Refresh</button>
-    <div class="seg">
+    <button class="btn primary tip" data-tip="Сохранить настройки и применить их к сервису." onclick="save()">Save & Apply</button>
+    <button class="btn tip" data-tip="Проверить доступность сервиса аддона (ping)." onclick="ping()">Ping</button>
+    <button class="btn ghost tip" data-tip="Обновить значения на странице из текущих опций сервера." onclick="load()">Refresh</button>
+    <div class="seg tip" data-tip="Быстрая установка минимума подтверждений (3/4/5).">
       <button id="m3" onclick="setMin(3)">3</button>
       <button id="m4" onclick="setMin(4)">4</button>
       <button id="m5" onclick="setMin(5)">5</button>
@@ -48,64 +57,64 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:12px 0}
   </div>
 
   <section class="card">
-    <h2>Basics</h2>
+    <h2 class="tip" data-tip="Базовые параметры подключения и фильтрации рынка.">Basics</h2>
     <div class="grid2">
       <div>
-        <label>Telegram token</label><input id="telegram_token" type="text" placeholder="123:ABC"/>
-        <label>Telegram chat ID</label><input id="telegram_chat_id" type="text" placeholder="123456789"/>
+        <label class="tip" data-tip="Токен Telegram-бота вида 123456:ABC... Получается у @BotFather.">Telegram token</label><input id="telegram_token" type="text" placeholder="123:ABC"/>
+        <label class="tip" data-tip="ID чата/канала для уведомлений. Можно узнать через @userinfobot.">Telegram chat ID</label><input id="telegram_chat_id" type="text" placeholder="123456789"/>
       </div>
       <div>
-        <label>Symbols quote</label><input id="symbols_quote" type="text" value="USDT"/>
-        <label>Top N by 24h volume</label><input id="top_n_by_volume" type="number" value="120"/>
+        <label class="tip" data-tip="Котируемая валюта для пар. Обычно USDT.">Symbols quote</label><input id="symbols_quote" type="text" value="USDT"/>
+        <label class="tip" data-tip="Сколько верхних по 24ч-объёму пар отбирать для сканирования.">Top N by 24h volume</label><input id="top_n_by_volume" type="number" value="120"/>
       </div>
     </div>
     <div class="grid2">
       <div>
-        <label>Min 24h volume (USD)</label><input id="min_vol_24h_usd" type="number" value="5000000"/>
-        <label>Cooldown (min)</label><input id="cooldown_minutes" type="number" value="20"/>
+        <label class="tip" data-tip="Минимальный дневной объём в долларах. Отсекает неликвид.">Min 24h volume (USD)</label><input id="min_vol_24h_usd" type="number" value="5000000"/>
+        <label class="tip" data-tip="Пауза между сигналами по одной и той же паре, в минутах.">Cooldown (min)</label><input id="cooldown_minutes" type="number" value="20"/>
       </div>
       <div>
-        <label>Timezone (IANA)</label><input id="timezone" type="text" value="Asia/Seoul"/>
-        <label>Use Level1 spread adjust</label><input id="use_level1_spread" type="checkbox"/>
+        <label class="tip" data-tip="Таймзона (IANA), влияет на сессию VWAP и расписание. Пример: Asia/Seoul.">Timezone (IANA)</label><input id="timezone" type="text" value="Asia/Seoul"/>
+        <label class="tip" data-tip="Учитывать спред лучшего bid/ask при расчётах входа/тейков и фильтрации низкой чистой прибыли.">Use Level1 spread adjust</label><input id="use_level1_spread" type="checkbox"/>
       </div>
     </div>
   </section>
 
   <section class="card">
-    <h2>Signal Strength</h2>
-    <label>Minimum confirmations (3/4/5)</label>
+    <h2 class="tip" data-tip="Контроль требуемого числа подтверждений на 5m перед отправкой сигнала.">Signal Strength</h2>
+    <label class="tip" data-tip="Сколько подтверждений нужно на 5m, чтобы отправить сигнал: EMA кросс/реκлейм, RSI≥порог, MACD импульс/кросс, VWAP↑ & price>VWAP.">Minimum confirmations (3/4/5)</label>
     <select id="min_confirms"><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
     <div class="notice">Bot will send only signals with confirmations ≥ N/5</div>
   </section>
 
   <div class="row">
     <section class="card">
-      <h2>Bias — 1h</h2>
-      <label>EMA (fast / mid / slow)</label>
+      <h2 class="tip" data-tip="Тренд-фильтр: допускаем сигналы только когда 1-часовой контекст в нашу сторону.">Bias — 1h</h2>
+      <label class="tip" data-tip="EMA на выбранном ТФ. Используется для тренда (Bias/Setup) и входа (Trigger).\n• fast — быстрая EMA\n• mid — средняя EMA\n• slow — медленная EMA">EMA (fast / mid / slow)</label>
       <div class="grid3">
         <input id="ema_fast_1h" type="number" value="20"/>
         <input id="ema_mid_1h"  type="number" value="50"/>
         <input id="ema_slow_1h" type="number" value="200"/>
       </div>
-      <label>RSI (len / min)</label>
+      <label class="tip" data-tip="RSI на этом ТФ. len — период RSI. min — минимально допустимое значение для фильтра (Bias/Setup).">RSI (len / min)</label>
       <div class="grid2">
         <input id="rsi_len_1h" type="number" value="14"/>
         <input id="rsi_min_1h" type="number" value="50"/>
       </div>
-      <label>MACD (fast / slow / signal)</label>
+      <label class="tip" data-tip="MACD параметры: fast/slow — периоды EMA, signal — сигнальная линия. В Bias можно требовать рост гистограммы или MACD ≥ 0.">MACD (fast / slow / signal)</label>
       <div class="grid3">
         <input id="macd_fast_1h" type="number" value="12"/>
         <input id="macd_slow_1h" type="number" value="26"/>
         <input id="macd_signal_1h" type="number" value="9"/>
       </div>
       <hr class="sep"/>
-      <label><input id="bias_need_ema_order" type="checkbox" checked/> Require EMA order</label>
-      <label>EMA order mode</label>
+      <label class="tip" data-tip="Включает требование правильного порядка EMA на 1h перед любыми входами."><input id="bias_need_ema_order" type="checkbox" checked/> Require EMA order</label>
+      <label class="tip" data-tip="Какой порядок EMA на 1h считать «правильным»:\n• fast ≥ mid — мягче, больше сигналов\n• mid ≥ slow — жёстче, более трендово">EMA order mode</label>
       <select id="bias_ema_order_mode">
         <option value="fast_over_mid">fast ≥ mid</option>
         <option value="mid_over_slow">mid ≥ slow</option>
       </select>
-      <label>MACD condition (optional)</label>
+      <label class="tip" data-tip="Доп. фильтр для Bias (1h):\n• Histogram rising — мягко\n• MACD ≥ 0 — жёстче\n• Off — не использовать MACD">MACD condition (optional)</label>
       <select id="bias_macd_condition">
         <option value="hist_rising">Histogram rising (soft, default)</option>
         <option value="macd_ge_0">MACD ≥ 0</option>
@@ -114,43 +123,43 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:12px 0}
     </section>
 
     <section class="card">
-      <h2>Setup — 15m</h2>
-      <label>EMA (fast / mid / slow)</label>
+      <h2 class="tip" data-tip="Контекст на 15m: порядок EMA, RSI и относительный объём (RVOL).">Setup — 15m</h2>
+      <label class="tip" data-tip="EMA на выбранном ТФ. Используется для тренда (Bias/Setup) и входа (Trigger).\n• fast — быстрая EMA\n• mid — средняя EMA\n• slow — медленная EMA">EMA (fast / mid / slow)</label>
       <div class="grid3">
         <input id="ema_fast_15m" type="number" value="20"/>
         <input id="ema_mid_15m"  type="number" value="50"/>
         <input id="ema_slow_15m" type="number" value="200"/>
       </div>
-      <label>RSI (len / min)</label>
+      <label class="tip" data-tip="RSI на этом ТФ. len — период RSI. min — минимально допустимое значение для фильтра (Bias/Setup).">RSI (len / min)</label>
       <div class="grid2">
         <input id="rsi_len_15m" type="number" value="14"/>
         <input id="rsi_min_15m" type="number" value="50"/>
       </div>
-      <label>MACD (fast / slow / signal)</label>
+      <label class="tip" data-tip="MACD параметры: fast/slow — периоды EMA, signal — сигнальная линия. В Bias можно требовать рост гистограммы или MACD ≥ 0.">MACD (fast / slow / signal)</label>
       <div class="grid3">
         <input id="macd_fast_15m" type="number" value="12"/>
         <input id="macd_slow_15m" type="number" value="26"/>
         <input id="macd_signal_15m" type="number" value="9"/>
       </div>
-      <label>RVOL 15m threshold</label><input id="rvol15m_min" type="number" step="0.1" value="1.6"/>
+      <label class="tip" data-tip="Относительный объём: объём текущей свечи / SMA(20). Порог отсечёт низкообъёмные пробои.">RVOL 15m threshold</label><input id="rvol15m_min" type="number" step="0.1" value="1.6"/>
     </section>
   </div>
 
   <div class="row">
     <section class="card">
-      <h2>Trigger — 5m</h2>
-      <label>EMA (fast / mid / slow)</label>
+      <h2 class="tip" data-tip="Точка входа на 5m: быстрые EMA, RSI-over, MACD импульс/кросс, VWAP.">Trigger — 5m</h2>
+      <label class="tip" data-tip="EMA на выбранном ТФ. Используется для тренда (Bias/Setup) и входа (Trigger).\n• fast — быстрая EMA\n• mid — средняя EMA\n• slow — медленная EMA">EMA (fast / mid / slow)</label>
       <div class="grid3">
         <input id="ema_fast_5m" type="number" value="9"/>
         <input id="ema_mid_5m"  type="number" value="21"/>
         <input id="ema_slow_5m" type="number" value="50"/>
       </div>
-      <label>RSI (len / over)</label>
+      <label class="tip" data-tip="RSI на 5m: len — период, over — порог входа (например 55).">RSI (len / over)</label>
       <div class="grid2">
         <input id="rsi_len_5m" type="number" value="9"/>
         <input id="rsi_over_5m" type="number" value="55"/>
       </div>
-      <label>MACD (fast / slow / signal)</label>
+      <label class="tip" data-tip="MACD параметры: fast/slow — периоды EMA, signal — сигнальная линия. В Bias можно требовать рост гистограммы или MACD ≥ 0.">MACD (fast / slow / signal)</label>
       <div class="grid3">
         <input id="macd_fast_5m" type="number" value="8"/>
         <input id="macd_slow_5m" type="number" value="21"/>
@@ -159,25 +168,25 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:12px 0}
     </section>
 
     <section class="card">
-      <h2>Anti-Noise</h2>
-      <label>Max breakout candle body (×ATR)</label><input id="breakout_body_max_atr_mult" type="number" step="0.1" value="1.8"/>
-      <label>Min distance to EMA200 (5m, %)</label><input id="ema200_5m_min_distance_pct" type="number" step="0.1" value="0.2"/>
+      <h2 class="tip" data-tip="Защита от шума: ограничение тела пробоя и дистанция до EMA200(5m).">Anti-Noise</h2>
+      <label class="tip" data-tip="Лимит размера тела пробойной свечи относительно ATR(14). Защита от аномально больших свечей.">Max breakout candle body (×ATR)</label><input id="breakout_body_max_atr_mult" type="number" step="0.1" value="1.8"/>
+      <label class="tip" data-tip="Минимальная дистанция цены до EMA200 на 5m (в процентах). Избегаем входа прямо у EMA200.">Min distance to EMA200 (5m, %)</label><input id="ema200_5m_min_distance_pct" type="number" step="0.1" value="0.2"/>
     </section>
   </div>
 
   <div class="row">
     <section class="card">
-      <h2>Exits & Costs (Advanced)</h2>
-      <label>TP levels (decimals, comma separated)</label><input id="tp_levels_pct" type="text" value="0.7,1.2,2.0"/>
+      <h2 class="tip" data-tip="Настройки тейков, комиссий и минимальной чистой доходности.">Exits & Costs (Advanced)</h2>
+      <label class="tip" data-tip="Уровни тейков в десятичной форме: 0.007 = 0.7%. Оставьте пусто для значений по умолчанию.">TP levels (decimals, comma separated)</label><input id="tp_levels_pct" type="text" value="0.7,1.2,2.0"/>
       <div class="grid3">
         <div>
-          <label>Taker fee (bps)</label><input id="taker_fee_bps" type="number" value="10"/>
+          <label class="tip" data-tip="Комиссия тейкера в базисных пунктах: 10 bps = 0.1%.">Taker fee (bps)</label><input id="taker_fee_bps" type="number" value="10"/>
         </div>
         <div>
-          <label>Extra buffer (bps)</label><input id="roundtrip_extra_buffer_bps" type="number" value="5"/>
+          <label class="tip" data-tip="Доп. буфер на проскальзывание/спред, в bps.">Extra buffer (bps)</label><input id="roundtrip_extra_buffer_bps" type="number" value="5"/>
         </div>
         <div>
-          <label>Min net profit (bps)</label><input id="min_net_profit_bps" type="number" value="0"/>
+          <label class="tip" data-tip="Минимальная ожидаемая чистая прибыль после комиссий; слабые сигналы отфильтровываются.">Min net profit (bps)</label><input id="min_net_profit_bps" type="number" value="0"/>
         </div>
       </div>
     </section>
