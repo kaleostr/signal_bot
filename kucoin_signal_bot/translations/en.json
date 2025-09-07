@@ -1,0 +1,38 @@
+{
+  "name": "KuCoin Spot Signal Bot",
+  "description": "KuCoin spot scanner with Telegram alerts. Bias 1h → Setup 15m → Trigger 5m.",
+  "configuration": {
+    "network": {
+      "8080/tcp": "Web UI"
+    },
+    "options": {
+      "telegram_token": {
+        "name": "Telegram Token",
+        "description": "BotFather API token"
+      },
+      "telegram_chat_id": {
+        "name": "Telegram Chat ID",
+        "description": "Chat/channel/user ID"
+      },
+      "min_confirms": {
+        "name": "Minimum confirmations",
+        "description": "Send only signals with score ≥ N/5"
+      },
+      "min_vol_24h_usd": {
+        "name": "24h Volume Min (USDT)"
+      },
+      "cooldown_minutes": {
+        "name": "Cooldown (minutes)"
+      },
+      "symbols_quote": {
+        "name": "Quote Asset"
+      },
+      "top_n_by_volume": {
+        "name": "Top coins by volume"
+      },
+      "timezone": {
+        "name": "Timezone"
+      }
+    }
+  }
+}
