@@ -3,123 +3,54 @@ import pandas as pd
 import numpy as np
 from ta.trend import EMAIndicator, MACD
 from ta.momentum import RSIIndicator
-from ta.volatility import AverageTrueRange
+from ta.volatility import AverageTrueRange, BollingerBands
 
-# -------- Helpers --------
-def _infer_tf_str(df: pd.DataFrame) -> str:
-    """Infer timeframe string like '5m', '15m', '1h' from df.time spacing."""
-    try:
-        if len(df) < 3:
-            return "5m"
-        dt = (df["time"].iloc[-1] - df["time"].iloc[-2]).total_seconds()
-        # closest of 5m/15m/1h by ratio
-        candidates = [("5m", 300.0), ("15m", 900.0), ("1h", 3600.0)]
-        best = min(candidates, key=lambda x: abs(dt - x[1]))
-        return best[0]
-    except Exception:
-        return "5m"
-
-def _opt(opts: Dict[str, Any], key: str, default=None):
-    return opts.get(key, default)
-
-def _tf_key(tf: str, base: str) -> str:
-    # base like "ema_fast" -> "ema_fast_5m" etc.
-    suf = {"5m":"_5m","15m":"_15m","1h":"_1h"}.get(tf,"")
-    return f"{base}{suf}"
-
-def _get_tf_int(opts: Dict[str, Any], tf: str, base: str, default: int) -> int:
-    """Per‑TF integer with backward compatible fallback to the legacy global key."""
-    v = opts.get(_tf_key(tf, base), None)
-    if isinstance(v, (int, float)) and not pd.isna(v):
-        return int(v)
-    v = opts.get(base, None)
-    if isinstance(v, (int, float)) and not pd.isna(v):
-        return int(v)
-    return int(default)
-
-def _get_tf_float(opts: Dict[str, Any], tf: str, base: str, default: float) -> float:
-    v = opts.get(_tf_key(tf, base), None)
-    if isinstance(v, (int,float)) and not pd.isna(v):
-        return float(v)
-    v = opts.get(base, None)
-    if isinstance(v, (int,float)) and not pd.isna(v):
-        return float(v)
-    return float(default)
-
-# -------- Core transforms --------
 def ohlcv_df(klines: List[List[Any]]) -> pd.DataFrame:
-    """Convert KuCoin kline rows -> tidy DataFrame (time, open, high, low, close, volume)."""
     if not klines:
         return pd.DataFrame(columns=["time","open","high","low","close","volume"])
     rows = []
     for k in klines:
-        # KuCoin returns: [time, open, close, high, low, volume, turnover]
-        #  time is ms since epoch (string or number)
         t = int(float(k[0]))
-        rows.append({
-            "time": pd.to_datetime(t, unit="ms"),
-            "open": float(k[1]),
-            "close": float(k[2]),
-            "high": float(k[3]),
-            "low":  float(k[4]),
-            "volume": float(k[5])
-        })
-    df = pd.DataFrame(rows).sort_values("time").reset_index(drop=True)
-    return df
-
-def _ensure_indicators(df: pd.DataFrame, tf: str, opts: Dict[str, Any]) -> pd.DataFrame:
-    """Compute indicators with per‑TF windows + legacy fallback:
-       EMA fast/mid/slow, EMA200, VWAP, RSI, MACD, ATR."""
-    if df.empty:
-        # return empty with expected columns
-        for col in ["ema_fast","ema_mid","ema_slow","ema200","vwap","rsi","macd","macd_signal","macd_hist","atr"]:
-            df[col] = np.nan
-        return df
-
-    # VWAP (sessionless cumulative)
-    pv = (df["close"] * df["volume"]).cumsum()
-    vv = df["volume"].cumsum().replace(0, np.nan)
-    df["vwap"] = pv / vv
-
-    # Windows per TF (fallback to legacy fields if absent)
-    ema_fast_w = _get_tf_int(opts, tf, "ema_fast", 20 if tf!="5m" else 9)
-    ema_mid_w  = _get_tf_int(opts, tf, "ema_mid",  50 if tf!="5m" else 21)
-    ema_slow_w = _get_tf_int(opts, tf, "ema_slow", 200 if tf!="5m" else 50)
-
-    # Core EMA trio
-    df["ema_fast"] = EMAIndicator(close=df["close"], window=int(ema_fast_w)).ema_indicator()
-    df["ema_mid"]  = EMAIndicator(close=df["close"], window=int(ema_mid_w)).ema_indicator()
-    df["ema_slow"] = EMAIndicator(close=df["close"], window=int(ema_slow_w)).ema_indicator()
-
-    # Dedicated EMA200 (used by anti‑noise regardless of 'slow')
-    df["ema200"] = EMAIndicator(close=df["close"], window=200).ema_indicator()
-
-    # RSI
-    rsi_len = _get_tf_int(opts, tf, "rsi_len", 14 if tf!="5m" else 9)
-    df["rsi"] = RSIIndicator(close=df["close"], window=int(rsi_len)).rsi()
-
-    # MACD
-    macd_fast = _get_tf_int(opts, tf, "macd_fast", 12 if tf!="5m" else 8)
-    macd_slow = _get_tf_int(opts, tf, "macd_slow", 26 if tf!="5m" else 21)
-    macd_sig  = _get_tf_int(opts, tf, "macd_signal", 9 if tf!="5m" else 5)
-    _macd = MACD(close=df["close"], window_fast=int(macd_fast), window_slow=int(macd_slow), window_sign=int(macd_sig))
-    df["macd"] = _macd.macd()
-    df["macd_signal"] = _macd.macd_signal()
-    df["macd_hist"] = _macd.macd_diff()
-
-    # ATR (14)
-    df["atr"] = AverageTrueRange(high=df["high"], low=df["low"], close=df["close"], window=14).average_true_range()
-
-    return df
+        rows.append({"time": pd.to_datetime(t, unit="ms"),
+                     "open": float(k[1]), "close": float(k[2]),
+                     "high": float(k[3]), "low": float(k[4]),
+                     "volume": float(k[5])})
+    return pd.DataFrame(rows).sort_values("time").reset_index(drop=True)
 
 def add_indicators(df: pd.DataFrame, opts: Dict[str, Any]) -> pd.DataFrame:
-    """Public API used by main.py. Infers TF and applies per‑TF windows with fallback."""
-    tf = _infer_tf_str(df)
-    return _ensure_indicators(df.copy(), tf, opts)
+    if df.empty:
+    # Bollinger Bands for adaptive TP
+    try:
+        _bb = BollingerBands(close=df["close"], window=20, window_dev=2.0)
+        df["bb_mavg"] = _bb.bollinger_mavg()
+        df["bb_hband"] = _bb.bollinger_hband()
+        df["bb_lband"] = _bb.bollinger_lband()
+    except Exception:
+        import numpy as np
+        df["bb_mavg"] = df["bb_hband"] = df["bb_lband"] = np.nan
+    return df
+
+    efast = int(opts.get("ema_fast",20)); emid = int(opts.get("ema_mid",50)); eslow = int(opts.get("ema_slow",200))
+    for p in (efast, emid, eslow):
+        df[f"ema{p}"] = EMAIndicator(close=df["close"], window=p).ema_indicator()
+    macd = MACD(close=df["close"],
+                window_slow=int(opts.get("macd_slow",26)),
+                window_fast=int(opts.get("macd_fast",12)),
+                window_sign=int(opts.get("macd_signal",9)))
+    df["macd"] = macd.macd(); df["macd_signal"] = macd.macd_signal(); df["macd_hist"] = macd.macd_diff()
+    rsi_len = int(opts.get("rsi_length",14))
+    df["rsi"] = RSIIndicator(close=df["close"], window=rsi_len).rsi()
+    atr = AverageTrueRange(high=df["high"], low=df["low"], close=df["close"], window=14)
+    df["atr"] = atr.average_true_range()
+    pv = (df["close"] * df["volume"]).cumsum(); vv = df["volume"].cumsum().replace(0, np.nan)
+    df["vwap"] = pv / vv
+    if "ema20" not in df:  df["ema20"]  = EMAIndicator(close=df["close"], window=20).ema_indicator()
+    if "ema50" not in df:  df["ema50"]  = EMAIndicator(close=df["close"], window=50).ema_indicator()
+    if "ema200" not in df: df["ema200"] = EMAIndicator(close=df["close"], window=200).ema_indicator()
+    return df
 
 def rolling_rvol(vol_series: pd.Series, window:int=20) -> float:
-    """Relative volume (last bar volume / SMA(window))."""
-    if len(vol_series) < max(window, 2) or vol_series.iloc[-1] == 0:
+    if len(vol_series) < window or vol_series.iloc[-1] == 0:
         return 0.0
     sma = vol_series.rolling(window).mean().iloc[-1]
     if not sma or np.isnan(sma) or sma == 0:
