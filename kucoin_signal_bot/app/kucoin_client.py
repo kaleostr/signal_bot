@@ -1,7 +1,7 @@
 import httpx
 from typing import Dict, Any, List
-KU_PUBLIC = "https://api.kucoin.com"
 
+KU_PUBLIC = "https://api.kucoin.com"
 TF_MAP = {"5m":"5min","15m":"15min","1h":"1hour"}
 
 class KucoinClient:
@@ -21,7 +21,7 @@ class KucoinClient:
         data = list(reversed(data))[:limit]
         return data
 
-    async def fetch_level1(self, symbol: str) -> Dict[str, Any]:
+    async def fetch_level1(self, symbol: str):
         r = await self._http.get(f"{KU_PUBLIC}/api/v1/market/orderbook/level1", params={"symbol": symbol})
         r.raise_for_status()
         return r.json().get("data", {})

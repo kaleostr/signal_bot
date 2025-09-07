@@ -1,96 +1,44 @@
-import asyncio, os, time, json, re
-from typing import Dict, Any, List
-import yaml
-import pandas as pd
-from fastapi import FastAPI
+import asyncio, os, time, json, re, yaml
+from typing import Dict, Any
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+import httpx
+
 from kucoin_client import KucoinClient
 from features import ohlcv_df, add_indicators
 from rules import should_signal
 from notifier import TelegramNotifier
 
-import os as _os
-import httpx as _httpx
-
 SUP_URL = "http://supervisor"
-SUP_TOKEN = _os.environ.get("SUPERVISOR_TOKEN","")
+SUP_TOKEN = os.environ.get("SUPERVISOR_TOKEN","")
 
-async def supervisor_get_options():
-    if not SUP_TOKEN:
-        return {}
-    try:
-        async with _httpx.AsyncClient(timeout=10) as c:
-            r = await c.get(f"{SUP_URL}/addons/self/info", headers={"Authorization": f"Bearer {SUP_TOKEN}"})
-            if r.status_code == 200:
-                info = r.json()
-                return (info.get("data",{}) or {}).get("options", {}) or {}
-    except Exception:
-        return {}
-    return {}
-
-async def supervisor_set_options(new_opts: dict):
-    if not SUP_TOKEN:
-        return False
-    try:
-        async with _httpx.AsyncClient(timeout=15) as c:
-            payload = {"options": new_opts}
-            r = await c.post(f"{SUP_URL}/addons/self/options", headers={"Authorization": f"Bearer {SUP_TOKEN}"}, json=payload)
-            return r.status_code == 200
-    except Exception:
-        return False
-
-
-STATE = {
-    "signals_sent": 0,
-    "last_signal_ts": {},
-    "last_confirms": {},
-    "symbols": [],
-    "cfg": None,
-    "started_ts": time.time(),
-    "runtime": {"min_confirms": 3}
-}
-
+STATE = {"signals_sent":0,"last_signal_ts":{},"last_confirms":{},"symbols":[],"cfg":None,"started_ts":time.time(),"runtime":{"min_confirms":3}}
 RUNTIME_PATH = "/data/runtime.json"
 
 app = FastAPI()
 
-def load_cfg() -> Dict[str, Any]:
-
-    with open("/app/config.yaml", "r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
-    # allowed keys for syncing to options.json (based on config.json schema)
-    try:
-        with open('/data/../../kucoin_signal_bot/config.json','r',encoding='utf-8') as cf:
-            cjj = json.load(cf)
-            schema_keys = list((cjj or {}).get('schema', {}).keys())
-            cfg['allowed_keys'] = schema_keys
-    except Exception:
-        cfg['allowed_keys'] = []
-    return cfg
-
 def get_addon_options() -> Dict[str, Any]:
-    opts_path = "/data/options.json"
-    if os.path.exists(opts_path):
-        with open(opts_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
-
-def confirms_emoji(confirms: int) -> str:
-    return "🟢" if confirms==5 else ("🟡" if confirms==4 else ("🟠" if confirms==3 else ("🔴" if confirms==2 else "⚪")))
-
-def load_runtime_min_confirms(default_val:int) -> int:
+    # Prefer supervisor API if available
+    if SUP_TOKEN:
+        try:
+            r = httpx.get(f"{SUP_URL}/addons/self/info", headers={"Authorization": f"Bearer {SUP_TOKEN}"}, timeout=5.0)
+            if r.status_code == 200:
+                info = r.json()
+                opts = (info.get("data",{}) or {}).get("options", {}) or {}
+                if opts:
+                    return opts
+        except Exception:
+            pass
+    # fallback to local file
     try:
-        if os.path.exists(RUNTIME_PATH):
-            with open(RUNTIME_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return int(data.get("min_confirms", default_val))
+        with open("/data/options.json","r",encoding="utf-8") as f:
+            return json.load(f)
     except Exception:
-        pass
-    return default_val
-
+        return {}
 
 def write_json(path, data):
     try:
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         return True
     except Exception:
@@ -99,61 +47,48 @@ def write_json(path, data):
 def read_json(path, default):
     try:
         if os.path.exists(path):
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
     except Exception:
         pass
     return default
 
 def merge_dicts(a: dict, b: dict) -> dict:
-    c = dict(a or {})
-    c.update(b or {})
-    return c
+    c = dict(a or {}); c.update(b or {}); return c
 
-def merged_options():
-    opts = get_addon_options()
-    user = read_json('/data/user_config.json', {})
-    return merge_dicts(opts, user)
+def load_cfg() -> Dict[str, Any]:
+    with open("/app/config.yaml","r",encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    return cfg
 
-async def persist_options(new_vals: dict):
-    # Update user_config.json
-    user = read_json('/data/user_config.json', {})
-    user = merge_dicts(user, new_vals or {})
-    write_json('/data/user_config.json', user)
-    # Also update Supervisor options (HA UI)
-    opts = get_addon_options()
-    opts = merge_dicts(opts, new_vals or {})
-    allowed = set(STATE['cfg']['allowed_keys']) if STATE.get('cfg') and 'allowed_keys' in STATE['cfg'] else set(opts.keys())
-    clean = {k: v for k, v in opts.items() if k in allowed or k in opts}
-    await supervisor_set_options(clean)
+def load_runtime_min_confirms(default_val:int) -> int:
+    try:
+        if os.path.exists(RUNTIME_PATH):
+            with open(RUNTIME_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return int(data.get("min_confirms", default_val))
+    except Exception: pass
+    return default_val
+
 def save_runtime_min_confirms(val:int):
     try:
         with open(RUNTIME_PATH, "w", encoding="utf-8") as f:
             json.dump({"min_confirms": int(val)}, f)
+    except Exception: pass
+
+async def supervisor_set_options(new_opts: dict):
+    if not SUP_TOKEN:
+        return False
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            payload = {"options": new_opts}
+            r = await c.post(f"{SUP_URL}/addons/self/options", headers={"Authorization": f"Bearer {SUP_TOKEN}"}, json=payload)
+            return r.status_code == 200
     except Exception:
-        pass
+        return False
 
-def adjust_tps(entry: float, raw_levels, opts: Dict[str, Any], spread_bps: float=None):
-    fee = int(opts.get("taker_fee_bps",10))
-    buffer = int(opts.get("roundtrip_extra_buffer_bps",5))
-    min_net = int(opts.get("min_net_profit_bps",10))
-    cost_bps = 2*fee + (int(spread_bps) if spread_bps is not None else buffer)
-    min_pct = (cost_bps + min_net) / 10000.0
-    result = []
-    for lvl in raw_levels:
-        pct = max(float(lvl), min_pct)
-        result.append(entry*(1.0+pct))
-    return result
-
-def format_signal(sym: str, res: Dict[str, Any], confirms: int, adjusted_tps):
-    entry = res["entry"]; sl = res["sl"]
-    emoji = confirms_emoji(confirms)
-    reasons = ", ".join(res["reasons"])
-    return (f"💵 {sym}\n{emoji} {confirms}/5 | 5m — LONG\n"
-            f"Вход: {entry:.6f}\n"
-            f"SL:   {sl:.6f}\n"
-            f"TP1:  {adjusted_tps[0]:.6f}\nTP2:  {adjusted_tps[1]:.6f}\nTP3:  {adjusted_tps[2]:.6f}\n"
-            f"Причины: {reasons}")
+def confirms_emoji(n:int)->str:
+    return "🟢" if n==5 else ("🟡" if n==4 else ("🟠" if n==3 else ("🔴" if n==2 else "⚪")))
 
 async def build_symbol_universe(ku: KucoinClient, quote: str, top_n: int, min_vol24: float):
     data = await ku.fetch_all_tickers()
@@ -175,8 +110,24 @@ async def build_symbol_universe(ku: KucoinClient, quote: str, top_n: int, min_vo
 async def fetch_df(ku: KucoinClient, symbol: str, tf: str, opts: Dict[str, Any]):
     kl = await ku.fetch_candles(symbol, tf=tf, limit=300)
     df = ohlcv_df(kl)
-    df = add_indicators(df, opts)
+    df = add_indicators(df, opts, tf_tag=tf)
     return df
+
+def adjust_tps(entry: float, raw_levels, opts: Dict[str, Any], spread_bps: float=None):
+    fee = int(opts.get("taker_fee_bps",10))
+    buffer = int(opts.get("roundtrip_extra_buffer_bps",5))
+    min_net = int(opts.get("min_net_profit_bps",10))
+    cost_bps = 2*fee + (int(spread_bps) if spread_bps is not None else buffer)
+    min_pct = (cost_bps + min_net) / 10000.0
+    return [entry*max(1.0+x, 1.0+min_pct) for x in raw_levels]
+
+def format_signal(sym: str, res: Dict[str, Any], confirms: int, adjusted_tps):
+    entry = res["entry"]; sl = res["sl"]
+    reasons = ", ".join(res["reasons"])
+    emoji = confirms_emoji(confirms)
+    return (f"💵 {sym}\n{emoji} {confirms}/5 | 5m — LONG\n"
+            f"Вход: {entry:.6f}\nSL:   {sl:.6f}\nTP1:  {adjusted_tps[0]:.6f}\nTP2:  {adjusted_tps[1]:.6f}\nTP3:  {adjusted_tps[2]:.6f}\n"
+            f"Причины: {reasons}")
 
 async def scan_once(tg: TelegramNotifier, ku: KucoinClient, cfg: Dict[str, Any], opts: Dict[str, Any]):
     quote = opts.get("symbols_quote","USDT")
@@ -189,15 +140,15 @@ async def scan_once(tg: TelegramNotifier, ku: KucoinClient, cfg: Dict[str, Any],
 
     for sym in symbols:
         try:
-            df5  = await fetch_df(ku, sym, tf=cfg["timeframes"]["trigger_tf"], opts=opts)
-            df15 = await fetch_df(ku, sym, tf=cfg["timeframes"]["setup_tf"],  opts=opts)
-            df1h = await fetch_df(ku, sym, tf=cfg["timeframes"]["bias_tf"],   opts=opts)
+            df5  = await fetch_df(ku, sym, "5m", opts)
+            df15 = await fetch_df(ku, sym, "15m", opts)
+            df1h = await fetch_df(ku, sym, "1h", opts)
             if df5.empty or df15.empty or df1h.empty:
                 continue
 
             res = should_signal(df1h, df15, df5, cfg, opts)
             if res.get("ok"):
-                confirms = int(res.get("confirms", len(res.get("reasons", []))))
+                confirms = int(res.get("confirms", 0))
                 if confirms < max(3, min_conf):
                     continue
 
@@ -217,10 +168,8 @@ async def scan_once(tg: TelegramNotifier, ku: KucoinClient, cfg: Dict[str, Any],
                 now = time.time()
                 last = STATE["last_signal_ts"].get(sym, 0)
                 last_confirms = STATE["last_confirms"].get(sym, 0)
-
                 if now - last >= cooldown or confirms > last_confirms:
-                    msg = format_signal(sym, res, confirms, adjusted_tps)
-                    await tg.send(msg)
+                    await tg.send(format_signal(sym, res, confirms, adjusted_tps))
                     STATE["last_signal_ts"][sym] = now
                     STATE["last_confirms"][sym] = confirms
                     STATE["signals_sent"] += 1
@@ -266,49 +215,33 @@ async def commands_loop():
                     await tg.send(
                         "📊 Status\n"
                         f"Tracked: {tracked}\nSignals sent: {sent}\nUptime: {uptime}s\n"
-                        f"min_confirms: {STATE['runtime']['min_confirms']}\n"
-                        f"EMA: {opts.get('ema_fast',20)}/{opts.get('ema_mid',50)}/{opts.get('ema_slow',200)}; "
-                        f"RSI: {opts.get('rsi_length',14)}; MACD: {opts.get('macd_fast',12)}/{opts.get('macd_slow',26)}/{opts.get('macd_signal',9)}; "
-                        f"RVOL15m_min: {opts.get('rvol15m_min',1.6)}"
+                        f"min_confirms: {STATE['runtime']['min_confirms']}"
                     )
                 elif low.startswith("/min"):
-                    m = re.findall(r"/min\s+(\d+)", low)
+                    import re as _re
+                    m = _re.findall(r"/min\s+(\d+)", low)
                     if m:
                         val = int(m[0])
                         if val in (3,4,5):
                             STATE["runtime"]["min_confirms"] = val
                             save_runtime_min_confirms(val)
-                            await tg.send(f"✅ min_confirms установлен: {val}")
+                            # push to supervisor options too
+                            cur = get_addon_options()
+                            cur["min_confirms"] = val
+                            await supervisor_set_options(cur)
+                            await tg.send(f"✅ min_confirms set to {val}")
                         else:
-                            await tg.send("Укажи 3, 4 или 5: /min 4")
+                            await tg.send("Use: /min 3|4|5")
                     else:
-                        await tg.send("Использование: /min 3|4|5")
+                        await tg.send("Use: /min 3|4|5")
         except Exception:
             pass
         await asyncio.sleep(5)
 
-from fastapi import FastAPI
-app = FastAPI()
-
-
-from fastapi.responses import HTMLResponse
-from fastapi import Request
-
-def read_json(path, default):
-    try:
-        if os.path.exists(path):
-            with open(path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return default
-
-def merged_options():
-    opts = get_addon_options()
-    user = read_json('/data/user_config.json', {})
-    merged = opts.copy()
-    merged.update(user)
-    return merged
+@app.on_event("startup")
+async def on_startup():
+    asyncio.create_task(worker_loop())
+    asyncio.create_task(commands_loop())
 
 @app.get("/", response_class=HTMLResponse)
 def ui_root():
@@ -317,18 +250,26 @@ def ui_root():
 
 @app.get("/api/options")
 def api_get_options():
-    return merged_options()
+    user = read_json('/data/user_config.json', {})
+    opts = get_addon_options()
+    return merge_dicts(opts, user)
 
 @app.post("/api/options")
 async def api_set_options(req: Request):
     data = await req.json()
-    await persist_options(data)
+    # persist to user_config and supervisor
+    user = read_json('/data/user_config.json', {})
+    user = merge_dicts(user, data or {})
+    write_json('/data/user_config.json', user)
+    opts = get_addon_options()
+    newopts = merge_dicts(opts, data or {})
+    await supervisor_set_options(newopts)
     return {"ok": True}
 
 @app.get("/api/ping")
 async def api_ping():
-    tg_opts = merged_options()
-    tg = TelegramNotifier(tg_opts.get("telegram_token",""), tg_opts.get("telegram_chat_id",""))
+    opts = get_addon_options()
+    tg = TelegramNotifier(opts.get("telegram_token",""), opts.get("telegram_chat_id",""))
     await tg.send("pong")
     return {"ok": True}
 
@@ -336,18 +277,14 @@ async def api_ping():
 async def api_set_min(val: int):
     if val not in (3,4,5):
         return {"ok": False, "error":"min must be 3/4/5"}
-    STATE['runtime']['min_confirms'] = val
+    STATE["runtime"]["min_confirms"] = val
     save_runtime_min_confirms(val)
-    await persist_options({'min_confirms': val})
-    tg_opts = merged_options()
-    tg = TelegramNotifier(tg_opts.get('telegram_token',''), tg_opts.get('telegram_chat_id',''))
+    opts = get_addon_options()
+    opts["min_confirms"] = val
+    await supervisor_set_options(opts)
+    tg = TelegramNotifier(opts.get("telegram_token",""), opts.get("telegram_chat_id",""))
     await tg.send(f"✅ min_confirms set to {val} (via UI)")
     return {"ok": True, "min": val}
-
-@app.on_event("startup")
-async def on_startup():
-    asyncio.create_task(worker_loop())
-    asyncio.create_task(commands_loop())
 
 @app.get("/health")
 def health():

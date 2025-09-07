@@ -8,35 +8,29 @@
     "options": {
       "telegram_token": {
         "name": "Telegram токен",
-        "description": "BotFather API token (required)"
+        "description": "BotFather API token"
       },
       "telegram_chat_id": {
         "name": "Telegram чат ID",
-        "description": "Chat/channel/user ID to receive signals"
-      },
-      "min_confirms": {
-        "name": "Мин. подтверждений",
-        "description": "Send only signals with score ≥ N/5"
+        "description": "Chat/channel/user ID"
       },
       "min_vol_24h_usd": {
-        "name": "Мин. объём за 24ч (USDT)",
-        "description": "Liquidity filter for symbols"
+        "name": "Мин. объём за 24ч (USDT)"
       },
       "cooldown_minutes": {
-        "name": "Кулдаун (мин)",
-        "description": "Min interval between repeated alerts per symbol"
-      },
-      "symbols_quote": {
-        "name": "Котируемая валюта",
-        "description": "Usually USDT"
-      },
-      "top_n_by_volume": {
-        "name": "Топ монет по объёму",
-        "description": "How many most liquid pairs to scan"
+        "name": "Кулдаун (мин)"
       },
       "timezone": {
-        "name": "Timezone",
-        "description": "IANA TZ, e.g. Asia/Seoul"
+        "name": "Часовой пояс"
+      },
+      "symbols_quote": {
+        "name": "Котируемая валюта"
+      },
+      "top_n_by_volume": {
+        "name": "Топ монет по объёму"
+      },
+      "min_confirms": {
+        "name": "Мин. подтверждений"
       }
     }
   }

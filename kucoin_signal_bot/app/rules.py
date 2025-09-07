@@ -1,6 +1,14 @@
 from typing import Dict, Any, Tuple
 import pandas as pd
-from features import rolling_rvol
+from features import rolling_rvol if False else None  # placeholder to avoid import error
+
+def rolling_rvol(vol_series: pd.Series, window:int=20) -> float:
+    if len(vol_series) < window or vol_series.iloc[-1] == 0:
+        return 0.0
+    sma = vol_series.rolling(window).mean().iloc[-1]
+    if pd.isna(sma) or sma == 0:
+        return 0.0
+    return float(vol_series.iloc[-1] / sma)
 
 def compute_confirmations(df5: pd.DataFrame, df15: pd.DataFrame, opts: Dict[str, Any]) -> Dict[str,Any]:
     confirms = 0; reasons = []
@@ -9,19 +17,14 @@ def compute_confirmations(df5: pd.DataFrame, df15: pd.DataFrame, opts: Dict[str,
     if df5["close"].iloc[-1] >= df5["vwap"].iloc[-1] and df5["vwap"].diff().iloc[-1] > 0:
         confirms += 1; reasons.append("VWAP↑ & price>VWAP")
     hist = df5["macd_hist"].iloc[-3:]
-    cross_up_allowed = bool(opts.get("macd_cross_up_allowed", True))
-    cross_up = (df5["macd"].iloc[-1] >= df5["macd_signal"].iloc[-1]) and (df5["macd"].iloc[-2] < df5["macd_signal"].iloc[-2])
-    rising_need = int(opts.get("macd_hist_rising_bars_min", 2))
     d1 = hist.diff().fillna(0).iloc[-1] > 0
     d2 = hist.diff().fillna(0).iloc[-2] > 0 if len(hist) >= 2 else False
-    rising_ok = (d1 and d2) if rising_need >= 2 else d1
-    if rising_ok or (cross_up_allowed and cross_up):
+    if d1 and d2:
         confirms += 1; reasons.append("MACD impulse")
     rvol15 = rolling_rvol(df15["volume"], window=20)
     if rvol15 >= float(opts.get("rvol15m_min", 1.6)):
         confirms += 1; reasons.append(f"RVOL15m {rvol15:.2f}")
-    lbars = int(opts.get("breakout_lookback_bars", 10))
-    if df5["close"].iloc[-1] >= df5["high"].iloc[-lbars:].max():
+    if df5["close"].iloc[-1] >= df5["high"].iloc[-10:].max():
         confirms += 1; reasons.append("Local high breakout")
     return {"count": confirms, "reasons": reasons, "rvol15m": rvol15}
 
@@ -38,13 +41,12 @@ def anti_noise_checks(df5: pd.DataFrame, opts: Dict[str, Any]) -> bool:
     return True
 
 def bias_ok(df1h: pd.DataFrame, df15: pd.DataFrame, opts: Dict[str, Any]) -> bool:
-    if df1h["rsi"].iloc[-1] < int(opts.get("bias_rsi_min", 50)):
-        if bool(opts.get("bias_allow_price_above_ema200_15m", True)):
-            return df15["close"].iloc[-1] >= df15["ema200"].iloc[-1]
+    rsi_min_1h = int(opts.get("rsi_min_1h", opts.get("bias_rsi_min", 50)))
+    if df1h["rsi"].iloc[-1] < rsi_min_1h:
         return False
-    if bool(opts.get("bias_need_ema_order", True)):
-        if not (df1h["ema20"].iloc[-1] >= df1h["ema50"].iloc[-1]):
-            return False
+    # basic EMA trend on 1h
+    if not (df1h["ema20"].iloc[-1] >= df1h["ema50"].iloc[-1]):
+        return False
     return True
 
 def make_sl_tp(entry: float, df5: pd.DataFrame, cfg: Dict[str, Any]) -> Tuple[float, list]:
@@ -65,6 +67,10 @@ def should_signal(df1h: pd.DataFrame, df15: pd.DataFrame, df5: pd.DataFrame, cfg
         return {"ok": False, "why": "bias filter failed"}
     if not anti_noise_checks(df5, opts):
         return {"ok": False, "why": "anti-noise failed"}
+    # optional trigger RSI over (5m)
+    rsi_over_5m = int(opts.get("rsi_over_5m", 0))
+    if rsi_over_5m and df5["rsi"].iloc[-1] < rsi_over_5m:
+        return {"ok": False, "why": f"trigger rsi<{rsi_over_5m}"}
     c = compute_confirmations(df5, df15, opts)
     need = cfg["trigger"]["confirmations_needed"]
     if c["count"] >= need:
