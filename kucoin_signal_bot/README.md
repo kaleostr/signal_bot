@@ -1,8 +1,2 @@
-# KuCoin Spot Signal Bot — v0.1.5
-
-Объединяет стабильную логику v0.1.2 + новинки v0.1.3 (TP с комиссиями/спредом, /min, стартовое сообщение) + v0.1.4 (русский UI, регуляторы индикаторов).
-
-## Быстрый старт
-1) Установи аддон, укажи Telegram токен и чат ID
-2) После запуска придёт: “✅ KuCoin Spot Signal Bot запущен”
-3) Команды: /ping, /status, /min 3|4|5
+# KuCoin Spot Signal Bot — v0.1.6
+Same features as 0.1.5 with a valid Home Assistant schema.
