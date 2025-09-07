@@ -11,11 +11,11 @@
 .wrap{max-width:980px;margin:32px auto;padding:0 16px}
 .h1{font-size:24px;font-weight:600;margin:0 0 6px}
 .status{color:var(--muted);margin-bottom:16px}
-.controls{display:flex;gap:8px;margin:16px 0 24px;align-items:center}
-.btn{display:inline-block;border-radius:10px;padding:10px 14px;border:1px solid var(--line);background:#1b2030;color:#fff;cursor:pointer}
-.btn.primary{background:var(--acc);border-color:var(--acc)}
-.btn.ghost{background:transparent}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-left:auto}
+.controls{display:flex;gap:8px;margin:16px 0 24px;align-items:center;flex-wrap:wrap}
+.btn{display:inline-block;border-radius:10px;padding:10px 14px;background:#1b2030;border:1px solid var(--line);color:#fff;cursor:pointer}
+.btn.primary{background:var(--acc);border-color:transparent}
+.btn.ghost{background:transparent;border-color:var(--line);color:var(--muted)}
+.seg{display:flex;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
 .seg button{padding:8px 12px;background:#141822;border:0;color:#c9d1e0;cursor:pointer}
 .seg button.active{background:var(--acc);color:#fff}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -25,8 +25,10 @@ label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
 input,select{width:100%;background:#0c0f14;border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;outline:none}
 .small{font-size:12px;color:var(--muted)}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .notice{color:var(--muted);font-size:12px;margin-top:6px}
 footer{color:var(--muted);font-size:12px;margin:8px 2px}
+hr.sep{border:0;border-top:1px solid var(--line);margin:12px 0}
 </style>
 </head>
 <body>
@@ -47,53 +49,113 @@ footer{color:var(--muted);font-size:12px;margin:8px 2px}
 
   <section class="card">
     <h2>Basics</h2>
-    <div class="row">
+    <div class="grid2">
       <div>
-        <label>Telegram Token</label><input id="telegram_token" placeholder="1234:AA..." />
-        <label>Telegram Chat ID</label><input id="telegram_chat_id" placeholder="31179..." />
-        <label>Quote Asset</label><select id="symbols_quote"><option>USDT</option><option>USDC</option></select>
-        <label>Timezone</label><input id="timezone" value="Asia/Seoul" />
+        <label>Telegram token</label><input id="telegram_token" type="text" placeholder="123:ABC"/>
+        <label>Telegram chat ID</label><input id="telegram_chat_id" type="text" placeholder="123456789"/>
       </div>
       <div>
-        <label>24h Volume Min (USDT)</label><input id="min_vol_24h_usd" type="number" value="5000000" />
-        <label>Cooldown (minutes)</label><input id="cooldown_minutes" type="number" value="20" />
-        <label>Top coins by volume</label><input id="top_n_by_volume" type="number" value="120" />
-        <label>Minimum confirmations</label>
-        <select id="min_confirms"><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
-        <div class="notice">Only send signals with score ≥ N/5</div>
+        <label>Symbols quote</label><input id="symbols_quote" type="text" value="USDT"/>
+        <label>Top N by 24h volume</label><input id="top_n_by_volume" type="number" value="120"/>
+      </div>
+    </div>
+    <div class="grid2">
+      <div>
+        <label>Min 24h volume (USD)</label><input id="min_vol_24h_usd" type="number" value="5000000"/>
+        <label>Cooldown (min)</label><input id="cooldown_minutes" type="number" value="20"/>
+      </div>
+      <div>
+        <label>Timezone (IANA)</label><input id="timezone" type="text" value="Asia/Seoul"/>
+        <label>Use Level1 spread adjust</label><input id="use_level1_spread" type="checkbox"/>
       </div>
     </div>
   </section>
 
+  <section class="card">
+    <h2>Signal Strength</h2>
+    <label>Minimum confirmations (3/4/5)</label>
+    <select id="min_confirms"><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
+    <div class="notice">Bot will send only signals with confirmations ≥ N/5</div>
+  </section>
+
   <div class="row">
     <section class="card">
-      <h2>Indicators</h2>
+      <h2>Bias — 1h</h2>
       <label>EMA (fast / mid / slow)</label>
       <div class="grid3">
-        <input id="ema_fast" type="number" value="20"/><input id="ema_mid" type="number" value="50"/><input id="ema_slow" type="number" value="200"/>
+        <input id="ema_fast_1h" type="number" value="20"/>
+        <input id="ema_mid_1h"  type="number" value="50"/>
+        <input id="ema_slow_1h" type="number" value="200"/>
       </div>
-      <label>RSI length</label><input id="rsi_length" type="number" value="14"/>
+      <label>RSI (len / min)</label>
+      <div class="grid2">
+        <input id="rsi_len_1h" type="number" value="14"/>
+        <input id="rsi_min_1h" type="number" value="50"/>
+      </div>
       <label>MACD (fast / slow / signal)</label>
       <div class="grid3">
-        <input id="macd_fast" type="number" value="12"/><input id="macd_slow" type="number" value="26"/><input id="macd_signal" type="number" value="9"/>
+        <input id="macd_fast_1h" type="number" value="12"/>
+        <input id="macd_slow_1h" type="number" value="26"/>
+        <input id="macd_signal_1h" type="number" value="9"/>
       </div>
-      <label>RVOL 15m threshold</label><input id="rvol15m_min" type="number" step="0.1" value="1.6"/>
+      <hr class="sep"/>
+      <label><input id="bias_need_ema_order" type="checkbox" checked/> Require EMA order</label>
+      <label>EMA order mode</label>
+      <select id="bias_ema_order_mode">
+        <option value="fast_over_mid">fast ≥ mid</option>
+        <option value="mid_over_slow">mid ≥ slow</option>
+      </select>
+      <label>MACD condition (optional)</label>
+      <select id="bias_macd_condition">
+        <option value="hist_rising">Histogram rising (soft, default)</option>
+        <option value="macd_ge_0">MACD ≥ 0</option>
+        <option value="off">Off</option>
+      </select>
     </section>
 
     <section class="card">
-      <h2>Trend Filters (Bias)</h2>
-      <label>Min RSI (1h)</label><input id="bias_rsi_min" type="number" value="50"/>
-      <label><input id="bias_need_ema_order" type="checkbox" checked/> Require EMA20 ≥ EMA50 (1h)</label>
-      <label><input id="bias_allow_price_above_ema200_15m" type="checkbox" checked/> Allow if price ≥ EMA200 (15m) when RSI is below min</label>
+      <h2>Setup — 15m</h2>
+      <label>EMA (fast / mid / slow)</label>
+      <div class="grid3">
+        <input id="ema_fast_15m" type="number" value="20"/>
+        <input id="ema_mid_15m"  type="number" value="50"/>
+        <input id="ema_slow_15m" type="number" value="200"/>
+      </div>
+      <label>RSI (len / min)</label>
+      <div class="grid2">
+        <input id="rsi_len_15m" type="number" value="14"/>
+        <input id="rsi_min_15m" type="number" value="50"/>
+      </div>
+      <label>MACD (fast / slow / signal)</label>
+      <div class="grid3">
+        <input id="macd_fast_15m" type="number" value="12"/>
+        <input id="macd_slow_15m" type="number" value="26"/>
+        <input id="macd_signal_15m" type="number" value="9"/>
+      </div>
+      <label>RVOL 15m threshold</label><input id="rvol15m_min" type="number" step="0.1" value="1.6"/>
     </section>
   </div>
 
   <div class="row">
     <section class="card">
-      <h2>Breakout & Momentum</h2>
-      <label>Local high lookback (5m, bars)</label><input id="breakout_lookback_bars" type="number" value="10"/>
-      <label>MACD rising histogram bars (min)</label><input id="macd_hist_rising_bars_min" type="number" value="2"/>
-      <label><input id="macd_cross_up_allowed" type="checkbox" checked/> Allow MACD cross-up</label>
+      <h2>Trigger — 5m</h2>
+      <label>EMA (fast / mid / slow)</label>
+      <div class="grid3">
+        <input id="ema_fast_5m" type="number" value="9"/>
+        <input id="ema_mid_5m"  type="number" value="21"/>
+        <input id="ema_slow_5m" type="number" value="50"/>
+      </div>
+      <label>RSI (len / over)</label>
+      <div class="grid2">
+        <input id="rsi_len_5m" type="number" value="9"/>
+        <input id="rsi_over_5m" type="number" value="55"/>
+      </div>
+      <label>MACD (fast / slow / signal)</label>
+      <div class="grid3">
+        <input id="macd_fast_5m" type="number" value="8"/>
+        <input id="macd_slow_5m" type="number" value="21"/>
+        <input id="macd_signal_5m" type="number" value="5"/>
+      </div>
     </section>
 
     <section class="card">
@@ -103,17 +165,23 @@ footer{color:var(--muted);font-size:12px;margin:8px 2px}
     </section>
   </div>
 
-  <section class="card">
-    <h2>Exits & Costs (Advanced)</h2>
-    <div class="small">Protect from fees/spread; ensure TP1 is net‑profitable.</div>
-    <div class="row">
-      <div><label>Taker fee (bps)</label><input id="taker_fee_bps" type="number" value="10"/></div>
-      <div><label>Spread buffer (bps)</label><input id="roundtrip_extra_buffer_bps" type="number" value="5"/></div>
-    </div>
-    <label>Minimum net profit (bps)</label><input id="min_net_profit_bps" type="number" value="10"/>
-    <label>TP levels (%)</label><input id="tp_levels_pct" value="0.007, 0.012, 0.020"/>
-    <label><input id="use_level1_spread" type="checkbox"/> Use real spread (Level1)</label>
-  </section>
+  <div class="row">
+    <section class="card">
+      <h2>Exits & Costs (Advanced)</h2>
+      <label>TP levels (decimals, comma separated)</label><input id="tp_levels_pct" type="text" value="0.7,1.2,2.0"/>
+      <div class="grid3">
+        <div>
+          <label>Taker fee (bps)</label><input id="taker_fee_bps" type="number" value="10"/>
+        </div>
+        <div>
+          <label>Extra buffer (bps)</label><input id="roundtrip_extra_buffer_bps" type="number" value="5"/>
+        </div>
+        <div>
+          <label>Min net profit (bps)</label><input id="min_net_profit_bps" type="number" value="0"/>
+        </div>
+      </div>
+    </section>
+  </div>
 
   <footer id="footer">Changes are applied within a minute.</footer>
 </div>
@@ -132,14 +200,21 @@ async function load(){
   status.textContent = `Status: ${s.ok?'Running':'—'} • Tracked: ${s.tracked_symbols??'—'} • Signals: ${s.signals_sent??'—'} • min: ${s.min_confirms??'—'}`;
   // highlight segment
   ['m3','m4','m5'].forEach(id=>document.getElementById(id).classList.remove('active'));
-  const m = data.min_confirms||3; document.getElementById('m'+m).classList.add('active');
+  const m = data.min_confirms||3; const btn = document.getElementById('m'+m); if(btn) btn.classList.add('active');
 }
 async function save(){
   const fields=[
-    "telegram_token","telegram_chat_id","min_vol_24h_usd","cooldown_minutes","timezone","symbols_quote","top_n_by_volume","min_confirms",
-    "ema_fast","ema_mid","ema_slow","rsi_length","macd_fast","macd_slow","macd_signal","rvol15m_min",
-    "bias_rsi_min","bias_need_ema_order","bias_allow_price_above_ema200_15m",
-    "breakout_lookback_bars","macd_hist_rising_bars_min","macd_cross_up_allowed",
+    "telegram_token","telegram_chat_id","min_vol_24h_usd","cooldown_minutes","timezone",
+    "symbols_quote","top_n_by_volume","min_confirms",
+    // legacy global indicators (kept for backward compatibility)
+    "ema_fast","ema_mid","ema_slow","rsi_length","macd_fast","macd_slow","macd_signal",
+    // per‑TF
+    "ema_fast_1h","ema_mid_1h","ema_slow_1h","rsi_len_1h","rsi_min_1h","macd_fast_1h","macd_slow_1h","macd_signal_1h",
+    "ema_fast_15m","ema_mid_15m","ema_slow_15m","rsi_len_15m","rsi_min_15m","macd_fast_15m","macd_slow_15m","macd_signal_15m","rvol15m_min",
+    "ema_fast_5m","ema_mid_5m","ema_slow_5m","rsi_len_5m","rsi_over_5m","macd_fast_5m","macd_slow_5m","macd_signal_5m",
+    // bias options
+    "bias_need_ema_order","bias_ema_order_mode","bias_macd_condition",
+    // anti-noise & exits
     "breakout_body_max_atr_mult","ema200_5m_min_distance_pct",
     "taker_fee_bps","roundtrip_extra_buffer_bps","min_net_profit_bps","tp_levels_pct","use_level1_spread"
   ];
@@ -148,11 +223,18 @@ async function save(){
     body[k] = (el.type==='checkbox')? el.checked : el.value;
   }
   // normalize numbers and arrays
-  const ints=["min_vol_24h_usd","cooldown_minutes","top_n_by_volume","min_confirms","ema_fast","ema_mid","ema_slow","rsi_length","macd_fast","macd_slow","macd_signal","bias_rsi_min","breakout_lookback_bars","macd_hist_rising_bars_min","taker_fee_bps","roundtrip_extra_buffer_bps","min_net_profit_bps"];
+  const ints=["min_vol_24h_usd","cooldown_minutes","top_n_by_volume","min_confirms",
+              "ema_fast","ema_mid","ema_slow","rsi_length","macd_fast","macd_slow","macd_signal",
+              "ema_fast_1h","ema_mid_1h","ema_slow_1h","rsi_len_1h","rsi_min_1h","macd_fast_1h","macd_slow_1h","macd_signal_1h",
+              "ema_fast_15m","ema_mid_15m","ema_slow_15m","rsi_len_15m","rsi_min_15m","macd_fast_15m","macd_slow_15m","macd_signal_15m",
+              "ema_fast_5m","ema_mid_5m","ema_slow_5m","rsi_len_5m","rsi_over_5m",
+              "taker_fee_bps","roundtrip_extra_buffer_bps","min_net_profit_bps"];
   const floats=["rvol15m_min","breakout_body_max_atr_mult","ema200_5m_min_distance_pct"];
-  ints.forEach(k=>{ if(body[k]!==undefined) body[k]=parseInt(body[k],10); });
-  floats.forEach(k=>{ if(body[k]!==undefined) body[k]=parseFloat(body[k]); });
-  if(typeof body.tp_levels_pct==='string'){ body.tp_levels_pct = body.tp_levels_pct.split(',').map(s=>parseFloat(s.trim())).filter(x=>!isNaN(x)); }
+  ints.forEach(k=>{ if(body[k]!==undefined && body[k]!=="" ) body[k]=parseInt(body[k],10); });
+  floats.forEach(k=>{ if(body[k]!==undefined && body[k]!=="" ) body[k]=parseFloat(body[k]); });
+  if(typeof body.tp_levels_pct==='string'){
+    body.tp_levels_pct = body.tp_levels_pct.split(',').map(s=>parseFloat(s.trim())).filter(x=>!isNaN(x));
+  }
   await fetch('/api/options',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   document.getElementById('footer').textContent='Saved. Changes will apply within ~60s.';
 }
@@ -160,7 +242,7 @@ async function ping(){ await fetch('/api/ping'); }
 async function setMin(n){
   fetch('/api/set_min?val='+n).then(()=>{
     ['m3','m4','m5'].forEach(id=>document.getElementById(id).classList.remove('active'));
-    document.getElementById('m'+n).classList.add('active');
+    const btn = document.getElementById('m'+n); if(btn) btn.classList.add('active');
     const mc = document.getElementById('min_confirms'); if(mc) mc.value = String(n);
   });
 }

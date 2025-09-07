@@ -1,6 +1,6 @@
 {
   "name": "KuCoin Spot Signal Bot",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "slug": "kucoin_signal_bot",
   "description": "KuCoin spot scanner (USDT pairs) with Telegram signals + nice Web UI and native labeled options.",
   "arch": [
