@@ -17,6 +17,17 @@ RUNTIME_PATH = "/data/runtime.json"
 
 app = FastAPI()
 
+ALLOWED_SCHEMA_KEYS = {"telegram_token","telegram_chat_id","min_vol_24h_usd","cooldown_minutes","timezone","symbols_quote","top_n_by_volume","min_confirms"}
+
+def merged_options():
+    user = read_json('/data/user_config.json', {})
+    opts = merged_options()
+    return merge_dicts(opts, user)
+
+def filter_schema_keys(d: dict) -> dict:
+    return {k: v for k, v in (d or {}).items() if k in ALLOWED_SCHEMA_KEYS}
+
+
 def get_addon_options() -> Dict[str, Any]:
     # Prefer supervisor API if available
     if SUP_TOKEN:
@@ -177,7 +188,7 @@ async def scan_once(tg: TelegramNotifier, ku: KucoinClient, cfg: Dict[str, Any],
             continue
 
 async def worker_loop():
-    opts = get_addon_options()
+    opts = merged_options()
     cfg = load_cfg()
     STATE["cfg"] = cfg
     def_val = int(opts.get("min_confirms", 3))
@@ -196,7 +207,7 @@ async def worker_loop():
             await asyncio.sleep(10)
 
 async def commands_loop():
-    opts = get_addon_options()
+    opts = merged_options()
     tg = TelegramNotifier(opts.get("telegram_token",""), opts.get("telegram_chat_id",""))
     while True:
         try:
@@ -251,7 +262,7 @@ def ui_root():
 @app.get("/api/options")
 def api_get_options():
     user = read_json('/data/user_config.json', {})
-    opts = get_addon_options()
+    opts = merged_options()
     return merge_dicts(opts, user)
 
 @app.post("/api/options")
@@ -261,14 +272,14 @@ async def api_set_options(req: Request):
     user = read_json('/data/user_config.json', {})
     user = merge_dicts(user, data or {})
     write_json('/data/user_config.json', user)
-    opts = get_addon_options()
+    opts = merged_options()
     newopts = merge_dicts(opts, data or {})
-    await supervisor_set_options(newopts)
+    await supervisor_set_options(filter_schema_keys(newopts))
     return {"ok": True}
 
 @app.get("/api/ping")
 async def api_ping():
-    opts = get_addon_options()
+    opts = merged_options()
     tg = TelegramNotifier(opts.get("telegram_token",""), opts.get("telegram_chat_id",""))
     await tg.send("pong")
     return {"ok": True}
@@ -279,7 +290,7 @@ async def api_set_min(val: int):
         return {"ok": False, "error":"min must be 3/4/5"}
     STATE["runtime"]["min_confirms"] = val
     save_runtime_min_confirms(val)
-    opts = get_addon_options()
+    opts = merged_options()
     opts["min_confirms"] = val
     await supervisor_set_options(opts)
     tg = TelegramNotifier(opts.get("telegram_token",""), opts.get("telegram_chat_id",""))

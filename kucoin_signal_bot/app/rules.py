@@ -1,6 +1,5 @@
 from typing import Dict, Any, Tuple
 import pandas as pd
-from features import rolling_rvol if False else None  # placeholder to avoid import error
 
 def rolling_rvol(vol_series: pd.Series, window:int=20) -> float:
     if len(vol_series) < window or vol_series.iloc[-1] == 0:
