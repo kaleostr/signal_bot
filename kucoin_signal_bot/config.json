@@ -1,0 +1,187 @@
+{
+  "name": "KuCoin Spot Signal Bot",
+  "version": "0.1.5",
+  "slug": "kucoin_signal_bot",
+  "description": "Сканер спота KuCoin (USDT-пары) + Telegram сигналы. Bias 1H → Setup 15m → Trigger 5m. Фильтр подтверждений, индикаторы из UI, учёт комиссий/спреда.",
+  "arch": [
+    "aarch64",
+    "amd64"
+  ],
+  "startup": "services",
+  "boot": "auto",
+  "init": false,
+  "options": {
+    "telegram_token": "",
+    "telegram_chat_id": "",
+    "min_vol_24h_usd": 5000000,
+    "cooldown_minutes": 20,
+    "timezone": "Asia/Seoul",
+    "symbols_quote": "USDT",
+    "top_n_by_volume": 120,
+    "min_confirms": 3,
+    "ema_fast": 20,
+    "ema_mid": 50,
+    "ema_slow": 200,
+    "rsi_length": 14,
+    "macd_fast": 12,
+    "macd_slow": 26,
+    "macd_signal": 9,
+    "rvol15m_min": 1.6,
+    "bias_rsi_min": 50,
+    "bias_need_ema_order": true,
+    "bias_allow_price_above_ema200_15m": true,
+    "breakout_lookback_bars": 10,
+    "macd_hist_rising_bars_min": 2,
+    "macd_cross_up_allowed": true,
+    "breakout_body_max_atr_mult": 1.8,
+    "ema200_5m_min_distance_pct": 0.2,
+    "taker_fee_bps": 10,
+    "roundtrip_extra_buffer_bps": 5,
+    "min_net_profit_bps": 10,
+    "tp_levels_pct": [
+      0.007,
+      0.012,
+      0.02
+    ],
+    "use_level1_spread": false
+  },
+  "schema": {
+    "telegram_token": {
+      "type": "str",
+      "name": "Telegram токен",
+      "description": "API-токен бота Telegram"
+    },
+    "telegram_chat_id": {
+      "type": "str",
+      "name": "Telegram чат ID",
+      "description": "Идентификатор чата для сигналов"
+    },
+    "min_vol_24h_usd": {
+      "type": "int",
+      "name": "Мин. объём за 24ч (USDT)",
+      "description": "Фильтр ликвидности по суточному объёму"
+    },
+    "cooldown_minutes": {
+      "type": "int",
+      "name": "Задержка между сигналами (мин)",
+      "description": "Кулдаун для повторных сигналов по символу"
+    },
+    "timezone": {
+      "type": "str",
+      "name": "Часовой пояс",
+      "description": "Например: Asia/Seoul"
+    },
+    "symbols_quote": {
+      "type": "str",
+      "name": "Торговая пара (котируемая)",
+      "description": "Обычно USDT"
+    },
+    "top_n_by_volume": {
+      "type": "int",
+      "name": "Топ монет по объёму",
+      "description": "Сколько самых ликвидных монет мониторить"
+    },
+    "min_confirms": {
+      "type": "int",
+      "name": "Подтверждения",
+      "description": "Минимальное число совпадений условий (3, 4 или 5)"
+    },
+    "ema_fast": {
+      "type": "int",
+      "name": "📈 EMA быстрый (баров)",
+      "description": "Обычно 20"
+    },
+    "ema_mid": {
+      "type": "int",
+      "name": "📈 EMA средний (баров)",
+      "description": "Обычно 50"
+    },
+    "ema_slow": {
+      "type": "int",
+      "name": "📈 EMA медленный (баров)",
+      "description": "Обычно 200"
+    },
+    "rsi_length": {
+      "type": "int",
+      "name": "📊 RSI период",
+      "description": "Обычно 14"
+    },
+    "macd_fast": {
+      "type": "int",
+      "name": "📊 MACD fast",
+      "description": "Обычно 12"
+    },
+    "macd_slow": {
+      "type": "int",
+      "name": "📊 MACD slow",
+      "description": "Обычно 26"
+    },
+    "macd_signal": {
+      "type": "int",
+      "name": "📊 MACD signal",
+      "description": "Обычно 9"
+    },
+    "rvol15m_min": {
+      "type": "float",
+      "name": "📦 RVOL 15m порог",
+      "description": "Например 1.6"
+    },
+    "bias_rsi_min": {
+      "type": "int",
+      "name": "🧠 Bias: RSI(1h) минимум",
+      "description": "Минимальный RSI на 1ч"
+    },
+    "bias_need_ema_order": {
+      "type": "bool",
+      "name": "🧠 Bias: EMA20 ≥ EMA50 (1h)",
+      "description": "Требовать бычий порядок EMA"
+    },
+    "bias_allow_price_above_ema200_15m": {
+      "type": "bool",
+      "name": "🧠 Если RSI<мин, но цена ≥ EMA200(15m) — пускать?",
+      "description": "Подстраховка тренда"
+    },
+    "breakout_lookback_bars": {
+      "type": "int",
+      "name": "🚀 Локальный хай: окно (5m)",
+      "description": "Сколько последних свечей учитывать"
+    },
+    "macd_hist_rising_bars_min": {
+      "type": "int",
+      "name": "🚀 MACD: мин. растущих баров гист.",
+      "description": "Например 2"
+    },
+    "macd_cross_up_allowed": {
+      "type": "bool",
+      "name": "🚀 Разрешить MACD-кросс вверх",
+      "description": "Засчитывать кросс MACD/Signal"
+    },
+    "breakout_body_max_atr_mult": {
+      "type": "float",
+      "name": "🛡️ Макс. тело пробоя (×ATR)",
+      "description": "Срезать экстремальные импульсы"
+    },
+    "ema200_5m_min_distance_pct": {
+      "type": "float",
+      "name": "🛡️ Мин. дистанция до EMA200 (5m, %)",
+      "description": "Не входить слишком близко к EMA200"
+    },
+    "taker_fee_bps": "int",
+    "roundtrip_extra_buffer_bps": "int",
+    "min_net_profit_bps": "int",
+    "tp_levels_pct": [
+      "float"
+    ],
+    "use_level1_spread": "bool"
+  },
+  "ingress": false,
+  "webui": "http://[HOST]:[PORT:8080]",
+  "ports": {
+    "8080/tcp": 8080
+  },
+  "map": [
+    "share:rw",
+    "data:rw"
+  ],
+  "privileged": []
+}
