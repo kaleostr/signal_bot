@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<title>KuCoin Spot Signal Bot</title>
+<style>
+:root{--bg:#f5f7fb;--card:#ffffff;--text:#101418;--muted:#5c6673;--line:#e4e8ee;--ok:#1a9c5d;--warn:#d4a72c;--acc:#2d5bff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,system-ui,-apple-system,Segoe UI,Roboto}
+.wrap{max-width:980px;margin:32px auto;padding:0 16px}
+.h1{font-size:24px;font-weight:600;margin:0 0 6px}
+.status{color:var(--muted);margin-bottom:16px}
+.controls{display:flex;gap:8px;margin:16px 0 24px;align-items:center}
+.btn{display:inline-block;border-radius:10px;padding:10px 14px;border:1px solid var(--line);background:#1b2030;color:#fff;cursor:pointer}
+.btn.primary{background:var(--acc);border-color:var(--acc)}
+.btn.ghost{background:transparent}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-left:auto}
+.seg button{padding:8px 12px;background:#141822;border:0;color:#c9d1e0;cursor:pointer}
+.seg button.active{background:var(--acc);color:#fff}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:var(--card);border-radius:14px;padding:18px;box-shadow:0 4px 18px rgba(0,0,0,.25);margin-bottom:16px}
+.card h2{font-size:16px;margin:0 0 12px}
+label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
+input,select{width:100%;background:#0c0f14;border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;outline:none}
+.small{font-size:12px;color:var(--muted)}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.notice{color:var(--muted);font-size:12px;margin-top:6px}
+footer{color:var(--muted);font-size:12px;margin:8px 2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="h1">KuCoin Spot Signal Bot</div>
+  <div class="status" id="status">Status: —</div>
+
+  <div class="controls">
+    <button class="btn primary" onclick="save()">Save & Apply</button>
+    <button class="btn" onclick="ping()">Ping</button>
+    <button class="btn ghost" onclick="load()">Refresh</button>
+    <div class="seg">
+      <button id="m3" onclick="setMin(3)">3</button>
+      <button id="m4" onclick="setMin(4)">4</button>
+      <button id="m5" onclick="setMin(5)">5</button>
+    </div>
+  </div>
+
+  <section class="card">
+    <h2>Basics</h2>
+    <div class="row">
+      <div>
+        <label>Telegram Token</label><input id="telegram_token" placeholder="1234:AA..." />
+        <label>Telegram Chat ID</label><input id="telegram_chat_id" placeholder="31179..." />
+        <label>Quote Asset</label><select id="symbols_quote"><option>USDT</option><option>USDC</option></select>
+        <label>Timezone</label><input id="timezone" value="Asia/Seoul" />
+      </div>
+      <div>
+        <label>24h Volume Min (USDT)</label><input id="min_vol_24h_usd" type="number" value="5000000" />
+        <label>Cooldown (minutes)</label><input id="cooldown_minutes" type="number" value="20" />
+        <label>Top coins by volume</label><input id="top_n_by_volume" type="number" value="120" />
+        <label>Minimum confirmations</label>
+        <select id="min_confirms"><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
+        <div class="notice">Only send signals with score ≥ N/5</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="row">
+    <section class="card">
+      <h2>Indicators</h2>
+      <label>EMA (fast / mid / slow)</label>
+      <div class="grid3">
+        <input id="ema_fast" type="number" value="20"/><input id="ema_mid" type="number" value="50"/><input id="ema_slow" type="number" value="200"/>
+      </div>
+      <label>RSI length</label><input id="rsi_length" type="number" value="14"/>
+      <label>MACD (fast / slow / signal)</label>
+      <div class="grid3">
+        <input id="macd_fast" type="number" value="12"/><input id="macd_slow" type="number" value="26"/><input id="macd_signal" type="number" value="9"/>
+      </div>
+      <label>RVOL 15m threshold</label><input id="rvol15m_min" type="number" step="0.1" value="1.6"/>
+    </section>
+
+    <section class="card">
+      <h2>Trend Filters (Bias)</h2>
+      <label>Min RSI (1h)</label><input id="bias_rsi_min" type="number" value="50"/>
+      <label><input id="bias_need_ema_order" type="checkbox" checked/> Require EMA20 ≥ EMA50 (1h)</label>
+      <label><input id="bias_allow_price_above_ema200_15m" type="checkbox" checked/> Allow if price ≥ EMA200 (15m) when RSI is below min</label>
+    </section>
+  </div>
+
+  <div class="row">
+    <section class="card">
+      <h2>Breakout & Momentum</h2>
+      <label>Local high lookback (5m, bars)</label><input id="breakout_lookback_bars" type="number" value="10"/>
+      <label>MACD rising histogram bars (min)</label><input id="macd_hist_rising_bars_min" type="number" value="2"/>
+      <label><input id="macd_cross_up_allowed" type="checkbox" checked/> Allow MACD cross-up</label>
+    </section>
+
+    <section class="card">
+      <h2>Anti-Noise</h2>
+      <label>Max breakout candle body (×ATR)</label><input id="breakout_body_max_atr_mult" type="number" step="0.1" value="1.8"/>
+      <label>Min distance to EMA200 (5m, %)</label><input id="ema200_5m_min_distance_pct" type="number" step="0.1" value="0.2"/>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Exits & Costs (Advanced)</h2>
+    <div class="small">Protect from fees/spread; ensure TP1 is net‑profitable.</div>
+    <div class="row">
+      <div><label>Taker fee (bps)</label><input id="taker_fee_bps" type="number" value="10"/></div>
+      <div><label>Spread buffer (bps)</label><input id="roundtrip_extra_buffer_bps" type="number" value="5"/></div>
+    </div>
+    <label>Minimum net profit (bps)</label><input id="min_net_profit_bps" type="number" value="10"/>
+    <label>TP levels (%)</label><input id="tp_levels_pct" value="0.007, 0.012, 0.020"/>
+    <label><input id="use_level1_spread" type="checkbox"/> Use real spread (Level1)</label>
+  </section>
+
+  <footer id="footer">Changes are applied within a minute.</footer>
+</div>
+
+<script>
+async function load(){
+  const r = await fetch('/api/options'); const data = await r.json();
+  const keys = Object.keys(data||{});
+  for (const k of keys){ const el = document.getElementById(k); if(!el) continue;
+    if (el.type === 'checkbox') el.checked = !!data[k];
+    else el.value = data[k];
+  }
+  // status
+  const s = await fetch('/health').then(r=>r.json()).catch(()=>({}));
+  const status = document.getElementById('status');
+  status.textContent = `Status: ${s.ok?'Running':'—'} • Tracked: ${s.tracked_symbols??'—'} • Signals: ${s.signals_sent??'—'} • min: ${s.min_confirms??'—'}`;
+  // highlight segment
+  ['m3','m4','m5'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  const m = data.min_confirms||3; document.getElementById('m'+m).classList.add('active');
+}
+async function save(){
+  const fields=[
+    "telegram_token","telegram_chat_id","min_vol_24h_usd","cooldown_minutes","timezone","symbols_quote","top_n_by_volume","min_confirms",
+    "ema_fast","ema_mid","ema_slow","rsi_length","macd_fast","macd_slow","macd_signal","rvol15m_min",
+    "bias_rsi_min","bias_need_ema_order","bias_allow_price_above_ema200_15m",
+    "breakout_lookback_bars","macd_hist_rising_bars_min","macd_cross_up_allowed",
+    "breakout_body_max_atr_mult","ema200_5m_min_distance_pct",
+    "taker_fee_bps","roundtrip_extra_buffer_bps","min_net_profit_bps","tp_levels_pct","use_level1_spread"
+  ];
+  const body={};
+  for(const k of fields){const el=document.getElementById(k); if(!el) continue;
+    body[k] = (el.type==='checkbox')? el.checked : el.value;
+  }
+  // normalize numbers and arrays
+  const ints=["min_vol_24h_usd","cooldown_minutes","top_n_by_volume","min_confirms","ema_fast","ema_mid","ema_slow","rsi_length","macd_fast","macd_slow","macd_signal","bias_rsi_min","breakout_lookback_bars","macd_hist_rising_bars_min","taker_fee_bps","roundtrip_extra_buffer_bps","min_net_profit_bps"];
+  const floats=["rvol15m_min","breakout_body_max_atr_mult","ema200_5m_min_distance_pct"];
+  ints.forEach(k=>{ if(body[k]!==undefined) body[k]=parseInt(body[k],10); });
+  floats.forEach(k=>{ if(body[k]!==undefined) body[k]=parseFloat(body[k]); });
+  if(typeof body.tp_levels_pct==='string'){ body.tp_levels_pct = body.tp_levels_pct.split(',').map(s=>parseFloat(s.trim())).filter(x=>!isNaN(x)); }
+  await fetch('/api/options',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  document.getElementById('footer').textContent='Saved. Changes will apply within ~60s.';
+}
+async function ping(){ await fetch('/api/ping'); }
+async function setMin(n){ await fetch('/api/set_min?val='+n); load(); }
+load();
+</script>
+</body></html>
