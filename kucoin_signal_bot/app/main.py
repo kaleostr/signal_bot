@@ -178,6 +178,8 @@ async def worker_loop():
     STATE["runtime"]["min_confirms"] = load_runtime_min_confirms(def_val)
 
     tg = TelegramNotifier(opts.get("telegram_token",""), opts.get("telegram_chat_id",""))
+    print("[boot] telegram_token len=", len(opts.get("telegram_token","")) if opts.get("telegram_token") else 0,
+      "chat_id=", opts.get("telegram_chat_id",""))
     ku = KucoinClient()
 
     # Startup message
@@ -193,6 +195,8 @@ async def worker_loop():
 async def commands_loop():
     opts = merged_options()
     tg = TelegramNotifier(opts.get("telegram_token",""), opts.get("telegram_chat_id",""))
+    print("[boot] telegram_token len=", len(opts.get("telegram_token","")) if opts.get("telegram_token") else 0,
+      "chat_id=", opts.get("telegram_chat_id",""))
     while True:
         try:
             updates = await tg.get_updates()
@@ -229,8 +233,13 @@ async def commands_loop():
 
 @app.on_event("startup")
 async def on_startup():
-    asyncio.create_task(worker_loop())
-    asyncio.create_task(commands_loop())
+    try:
+        asyncio.create_task(worker_loop())
+        asyncio.create_task(commands_loop())
+        print('[startup] loops created')
+    except Exception as e:
+        print('[startup] failed to create loops:', e)
+
 
 @app.get("/", response_class=HTMLResponse)
 def ui_root():
@@ -260,6 +269,8 @@ async def api_set_options(req: Request):
 async def api_ping():
     opts = merged_options()
     tg = TelegramNotifier(opts.get("telegram_token",""), opts.get("telegram_chat_id",""))
+    print("[boot] telegram_token len=", len(opts.get("telegram_token","")) if opts.get("telegram_token") else 0,
+      "chat_id=", opts.get("telegram_chat_id",""))
     await tg.send("pong")
     return {"ok": True}
 
@@ -273,9 +284,17 @@ async def api_set_min(val: int):
     opts["min_confirms"] = val
     await supervisor_set_options(opts)
     tg = TelegramNotifier(opts.get("telegram_token",""), opts.get("telegram_chat_id",""))
+    print("[boot] telegram_token len=", len(opts.get("telegram_token","")) if opts.get("telegram_token") else 0,
+      "chat_id=", opts.get("telegram_chat_id",""))
     await tg.send(f"✅ min_confirms set to {val} (via UI)")
     return {"ok": True, "min": val}
 
 @app.get("/health")
 def health():
     return {"ok": True, "signals_sent": STATE["signals_sent"], "tracked_symbols": len(STATE.get("symbols", [])), "min_confirms": STATE["runtime"]["min_confirms"]}
+
+
+@app.get("/ui", response_class=HTMLResponse)
+def ui_alias():
+    with open("/app/ui.html","r",encoding="utf-8") as f:
+        return f.read()

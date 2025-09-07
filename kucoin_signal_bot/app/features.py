@@ -37,7 +37,7 @@ efast = int(g("ema_fast",20)); emid = int(g("ema_mid",50)); eslow = int(g("ema_s
                 window_sign=int(g("macd_signal",9)))
     df["macd"] = macd.macd(); df["macd_signal"] = macd.macd_signal(); df["macd_hist"] = macd.macd_diff()
 
-    rsi_len = int(g("rsi_length",14))
+    rsi_len = int(opts.get(f"rsi_len_{tf_tag}", g("rsi_length",14)))
     df["rsi"] = RSIIndicator(close=df["close"], window=rsi_len).rsi()
 
     atr = AverageTrueRange(high=df["high"], low=df["low"], close=df["close"], window=14)
