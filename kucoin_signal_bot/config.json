@@ -1,6 +1,6 @@
 {
   "name": "KuCoin Spot Signal Bot",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "slug": "kucoin_signal_bot",
   "description": "KuCoin spot scanner (USDT pairs) with Telegram signals + nice Web UI and native labeled options.",
   "arch": [
@@ -48,35 +48,12 @@
   "schema": {
     "telegram_token": "str",
     "telegram_chat_id": "str",
+    "min_confirms": "int",
     "min_vol_24h_usd": "int",
     "cooldown_minutes": "int",
-    "timezone": "str",
     "symbols_quote": "str",
     "top_n_by_volume": "int",
-    "min_confirms": "int",
-    "ema_fast": "int",
-    "ema_mid": "int",
-    "ema_slow": "int",
-    "rsi_length": "int",
-    "macd_fast": "int",
-    "macd_slow": "int",
-    "macd_signal": "int",
-    "rvol15m_min": "float",
-    "bias_rsi_min": "int",
-    "bias_need_ema_order": "bool",
-    "bias_allow_price_above_ema200_15m": "bool",
-    "breakout_lookback_bars": "int",
-    "macd_hist_rising_bars_min": "int",
-    "macd_cross_up_allowed": "bool",
-    "breakout_body_max_atr_mult": "float",
-    "ema200_5m_min_distance_pct": "float",
-    "taker_fee_bps": "int",
-    "roundtrip_extra_buffer_bps": "int",
-    "min_net_profit_bps": "int",
-    "tp_levels_pct": [
-      "float"
-    ],
-    "use_level1_spread": "bool"
+    "timezone": "str"
   },
   "ingress": false,
   "webui": "http://[HOST]:[PORT:8080]",
