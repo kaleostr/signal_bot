@@ -1,0 +1,11 @@
+timeframes:
+  bias_tf: "1h"
+  setup_tf: "15m"
+  trigger_tf: "5m"
+
+trigger:
+  confirmations_needed: 3
+
+exits:
+  tp_levels_pct: [0.007, 0.012, 0.020]
+  sl_mode: "vwap_sigma_or_box"
