@@ -1,0 +1,43 @@
+{
+  "name": "Binance Spot Signal Bot",
+  "description": "Сканер спота Binance с сигналами в Telegram. Bias 1ч → Setup 15м → Trigger 5м.",
+  "configuration": {
+    "network": {
+      "8080/tcp": "Web UI"
+    },
+    "options": {
+      "telegram_token": {
+        "name": "Telegram токен",
+        "description": "BotFather API token (required)"
+      },
+      "telegram_chat_id": {
+        "name": "Telegram чат ID",
+        "description": "Chat/channel/user ID to receive signals"
+      },
+      "min_confirms": {
+        "name": "Мин. подтверждений",
+        "description": "Send only signals with score ≥ N/5"
+      },
+      "min_vol_24h_usd": {
+        "name": "Мин. объём за 24ч (USDT)",
+        "description": "Liquidity filter for symbols"
+      },
+      "cooldown_minutes": {
+        "name": "Кулдаун (мин)",
+        "description": "Min interval between repeated alerts per symbol"
+      },
+      "symbols_quote": {
+        "name": "Котируемая валюта",
+        "description": "Usually USDT"
+      },
+      "top_n_by_volume": {
+        "name": "Топ монет по объёму",
+        "description": "How many most liquid pairs to scan"
+      },
+      "timezone": {
+        "name": "Timezone",
+        "description": "IANA TZ, e.g. Asia/Seoul"
+      }
+    }
+  }
+}
